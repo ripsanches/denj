@@ -1,0 +1,61 @@
+name: Сборка APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "android/**"
+      - "shell/**"
+      - "capacitor.config.json"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Зависимости и синхронизация Capacitor
+        run: |
+          npm ci
+          npx cap sync android
+
+      - name: Сборка APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          cp app/build/outputs/apk/release/app-release.apk ../denj.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: denj-apk
+          path: denj.apk
+
+      - name: Публикация в релизы
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Распорядок 1.0.${{ github.run_number }}
+          body: |
+            Скачайте **denj.apk** на телефон и откройте его, чтобы установить.
+            Интерфейс обновляется сам через интернет — новый APK нужен только при изменении оболочки.
+          files: denj.apk
+          make_latest: true

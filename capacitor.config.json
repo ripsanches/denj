@@ -1,0 +1,19 @@
+{
+  "appId": "rip.denj.app",
+  "appName": "Распорядок",
+  "webDir": "shell",
+  "server": {
+    "url": "https://ripsanches.github.io/denj/",
+    "errorPath": "offline.html",
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_notify",
+      "iconColor": "#1F6B5C"
+    }
+  }
+}

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1F6B5C">
+<title>Распорядок дня</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="style.css">
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+<div id="wall"></div><div id="veil"></div>
+
+<!-- Экран входа -->
+<div class="wrap" id="loginView" hidden>
+  <header class="card login">
+    <div class="date">Вход</div>
+    <h1>Распорядок дня</h1>
+    <p class="hint">Один аккаунт на телефоне и на ПК — дела синхронизируются.</p>
+    <form id="loginForm" novalidate class="col">
+      <label>Почта<input type="email" id="lEmail" autocomplete="email" required></label>
+      <label>Пароль (не меньше 6 символов)<input type="password" id="lPass" autocomplete="current-password" required></label>
+      <div class="row-btns">
+        <button type="submit" class="btn primary" id="lIn">Войти</button>
+        <button type="button" class="btn" id="lUp">Создать аккаунт</button>
+      </div>
+      <button type="button" class="link" id="lReset">Забыли пароль?</button>
+      <p class="err" id="lErr" hidden></p>
+    </form>
+  </header>
+</div>
+
+<!-- Основной экран -->
+<div class="wrap" id="appView" hidden>
+  <header class="card">
+    <div>
+      <div class="date" id="date">—</div>
+      <h1>Распорядок дня</h1>
+      <div class="clock" id="clock">--:--</div>
+    </div>
+    <div class="hright">
+      <div class="ring" aria-label="Прогресс дня">
+        <svg width="72" height="72" viewBox="0 0 76 76"><circle cx="38" cy="38" r="32" fill="none" stroke="var(--line)" stroke-width="7"/><circle id="arc" cx="38" cy="38" r="32" fill="none" stroke="var(--accent)" stroke-width="7" stroke-linecap="round" stroke-dasharray="201" stroke-dashoffset="201"/></svg>
+        <div class="n"><div><span id="cnt">0/0</span><small>сделано</small></div></div>
+      </div>
+      <button class="icon" id="settingsBtn" aria-label="Настройки"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+    </div>
+  </header>
+
+  <div class="sync"><span class="dot" id="syncDot"></span><span id="syncTxt">Загружаю…</span></div>
+  <div id="permBanner" hidden></div>
+  <div class="alerts" id="alerts"></div>
+
+  <section><div class="head"><h2>По времени</h2><button class="btn small" id="addTimed">+ Добавить</button></div><div class="list" id="timed" data-zone="timed"></div></section>
+  <section><div class="head"><h2>В течение дня</h2><button class="btn small" id="addFree">+ Добавить</button></div><div class="list" id="free" data-zone="free"></div></section>
+
+  <div id="seedBox" hidden class="card col">
+    <b>Список пуст</b>
+    <p class="hint">Можно сразу добавить ваши дела из прототипа: завтрак, отжимания, книга, Beat Saber, чтение вслух.</p>
+    <div><button class="btn primary" id="seedBtn">Добавить мои дела</button></div>
+  </div>
+
+  <section class="test card col" id="testBox">
+    <h2>Тест-режим</h2>
+    <p class="hint">Сдвиг часов только на этом экране, для проверки напоминаний. Сейчас: <b id="shiftTxt">0 мин</b>.</p>
+    <div class="row-btns">
+      <button class="btn" data-shift="15">+15 мин</button>
+      <button class="btn" data-shift="60">+1 час</button>
+      <button class="btn" id="shNext">К следующему делу</button>
+      <button class="btn" id="shReset">Сбросить</button>
+      <button class="btn" id="sound">Звук: выкл</button>
+    </div>
+  </section>
+</div>
+
+<button class="fab" id="add" hidden>+ Дело</button>
+<div id="sheetHost"></div>
+<input type="file" id="pickWall" accept="image/*" class="vis" tabindex="-1">
+<input type="file" id="pickAudio" accept="audio/*" class="vis" tabindex="-1">
+<div class="toast" id="toast" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>
