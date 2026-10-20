@@ -17,20 +17,22 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
           cache: npm
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
           cache: gradle
+
+      - uses: android-actions/setup-android@v3
 
       - name: Зависимости и синхронизация Capacitor
         run: |
@@ -41,8 +43,17 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace
+          set -o pipefail
+          ./gradlew assembleRelease --no-daemon 2>&1 | tee ../build.log
           cp app/build/outputs/apk/release/app-release.apk ../denj.apk
+
+      - name: Текст ошибки сборки
+        if: failure()
+        run: |
+          if [ -f build.log ]; then
+            msg=$( (grep -n -A25 "What went wrong" build.log || tail -40 build.log) | head -60 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=Gradle::${msg}"
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
