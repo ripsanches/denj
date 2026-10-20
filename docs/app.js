@@ -2,7 +2,7 @@
    Один и тот же файл работает в браузере на ПК и внутри APK на телефоне.
    Внутри APK доступен window.Capacitor: тогда напоминания ставятся как системные уведомления. */
 "use strict";
-const APP_VERSION = "1.0.0";
+const APP_VERSION = "1.0.1";
 
 const firebaseConfig = {
   apiKey: "AIzaSyABpompEgGy6Ft3nboT6nUldxtgzEh7gls",
@@ -21,10 +21,10 @@ const DAYS = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"]; // 0..6 = пн.
 const TONES = {bell:"Колокольчик", alarm:"Будильник", soft:"Мягкая мелодия", none:"Без звука"};
 const SEED = [
   {title:"Позавтракать", param:"", time:"08:30", repeat:10, order:1},
-  {title:"Отжаться", param:"10×3 раз", time:"21:30", repeat:15, order:2},
-  {title:"Прочитать главу книги", param:"1 глава", time:null, repeat:15, order:3},
+  {title:"Отжаться", param:"10*3 раз", time:"21:30", repeat:15, order:2},
+  {title:"Прочитать главу книги", param:"1 глава", time:"22:03", repeat:15, order:3},
   {title:"Поиграть в Beat Saber", param:"30 мин", time:"21:00", repeat:10, order:4},
-  {title:"Почитать вслух", param:"1 глава", time:"21:00", repeat:10, order:5},
+  {title:"Почитать вслух", param:"1 глава", time:null, lastTime:"21:00", repeat:10, order:5},
 ];
 const REPEAT_WINDOW_MIN = 120;   // сколько минут после начала повторять напоминания
 const MAX_REPEATS = 12;
@@ -130,12 +130,15 @@ async function snooze(t, min=10){
   await saveTask({...t, snoozeUntil: now().getTime()+min*60000});
   toast("Напомню через "+min+" минут");
 }
-$("seedBtn").onclick = async ()=>{
-  $("seedBtn").disabled=true;
+async function addSeed(){
+  const have=new Set(tasks.map(t=>(t.title||"").trim().toLowerCase()));
+  const missing=SEED.filter(x=>!have.has(x.title.toLowerCase()));
+  if(!missing.length){ toast("Все дела из прототипа уже в списке"); return }
   const batch=fs.batch();
-  SEED.forEach(s=>batch.set(tasksRef().doc(), {...s, days:[0,1,2,3,4,5,6], doneOn:null, sound:{kind:"tone",id:"bell"}}));
-  try{ await batch.commit(); toast("Дела добавлены") }catch(e){ toast("Не удалось добавить"); $("seedBtn").disabled=false }
-};
+  missing.forEach(x=>batch.set(tasksRef().doc(), {...x, days:[0,1,2,3,4,5,6], doneOn:null, sound:{kind:"tone",id:"bell"}}));
+  try{ await batch.commit(); toast("Добавлено дел: "+missing.length) }catch(e){ toast("Не удалось добавить") }
+}
+$("seedBtn").onclick=addSeed;
 
 /* ---------- перенос между блоками ---------- */
 function moveTo(t, zone){
@@ -461,6 +464,8 @@ function openSettings(){
       <div class="row-btns"><button class="btn" id="sPerm">Проверить разрешения</button><button class="btn" id="sTest">Тестовое уведомление через 10 с</button></div>
       <p class="hint">Чтобы Samsung не «усыплял» напоминания: Настройки → Приложения → Распорядок → Аккумулятор → «Без ограничений».</p>`
       :`<p class="hint">Это версия для ПК. Уведомления браузера можно включить кнопкой «Звук» в тест-режиме.</p>`}
+    <div class="lbl" style="margin:0">Дела</div>
+    <div class="row-btns"><button class="btn" id="sSeed">Добавить дела из прототипа</button></div>
     <div class="lbl" style="margin:0">Аккаунт</div>
     <p class="hint">${esc(user&&user.email)}</p>
     <div class="foot"><button class="btn" id="sOut">Выйти</button><button class="btn primary" id="wClose">Готово</button></div>
@@ -474,6 +479,7 @@ function openSettings(){
   $("wClear").onclick=()=>{ settings.wallpaper=null; saveSettings(); toast("Обои убраны") };
   let vt; $("wVeil").oninput=e=>{ settings.veil=+e.target.value; $("veilVal").textContent=settings.veil+"%"; applyWall(); clearTimeout(vt); vt=setTimeout(saveSettings,700) };
   $("sOut").onclick=()=>{ close(); auth.signOut() };
+  $("sSeed").onclick=()=>{ close(); addSeed() };
   if($("sPerm")) $("sPerm").onclick=async()=>{ try{ await LN.requestPermissions() }catch(e){} await checkPermissions(); toast($("permBanner").hidden?"Все разрешения есть":"Не хватает разрешений — см. баннер") };
   if($("sTest")) $("sTest").onclick=async()=>{ try{ await LN.schedule({notifications:[{id:999,title:"Проверка",body:"Уведомления работают",schedule:{at:new Date(Date.now()+10000),allowWhileIdle:true},channelId:"tone_bell",smallIcon:"ic_stat_notify"}]}); toast("Сверните приложение — через 10 секунд придёт уведомление") }catch(e){ toast("Ошибка: "+(e.message||e)) } };
 }
