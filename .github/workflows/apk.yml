@@ -32,8 +32,6 @@ jobs:
           java-version: 17
           cache: gradle
 
-      - uses: android-actions/setup-android@v3
-
       - name: Зависимости и синхронизация Capacitor
         run: |
           npm ci
